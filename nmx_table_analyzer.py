@@ -560,7 +560,7 @@ class NMXTableAnalyzer:
                     link_partner_guid=link_partner_guid,
                     link_partner_port=link_partner_port,
                     associated_gpu_errors=associated_errors,
-                    port_type=self.smdb_parser.classify_port_type(failure['switch_guid'], failure['port']) if self.smdb_parser else "trunk",  # Legacy trunk failures
+                    port_type=self.smdb_parser.classify_port_type(failure['switch_guid'], failure['port']) if self.smdb_parser else "trunk",  # Original trunk failures
                     event_type=event_type
                 )
                 self.trunk_events.append(event)
