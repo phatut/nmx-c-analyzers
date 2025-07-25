@@ -655,7 +655,7 @@ class NMXTableAnalyzer:
         
         with open(output_file, 'w') as f:
             f.write("FABRIC LINK FAILURES AND GPU ERRORS REPORT\n")
-            f.write("=" * 122 + "\n\n")
+            f.write("=" * 152 + "\n\n")
             
             # Table header
             header = (
@@ -663,7 +663,7 @@ class NMXTableAnalyzer:
                 f"{'Event/Error':<12} {'Details':<35} {'XID/Partner':<20} {'Detected In':<15}\n"
             )
             f.write(header)
-            f.write("-" * 122 + "\n")
+            f.write("-" * 152 + "\n")
             
             incident_num = 1
             for group in groups:
@@ -719,7 +719,7 @@ class NMXTableAnalyzer:
                 incident_num += 1
             
             # Summary
-            f.write("\n" + "=" * 122 + "\n")
+            f.write("\n" + "=" * 152 + "\n")
             access_count = sum(1 for e in self.trunk_events if e.port_type == "access")
             trunk_count = sum(1 for e in self.trunk_events if e.port_type == "trunk")
             gpu_error_count = sum(len(e.associated_gpu_errors) for e in self.trunk_events)
