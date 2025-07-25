@@ -135,7 +135,6 @@ class SMDBParser:
         self.smdb_file = smdb_file
         self.links: List[LinkPartner] = []
         self.switch_names: Dict[str, str] = {}
-        self.node_descriptions: Dict[str, str] = {}  # NodeGUID -> NodeDesc
         
     def parse(self):
         """Parse SMDB file and extract all link topology (switch-switch and switch-GPU)"""
@@ -148,29 +147,12 @@ class SMDBParser:
             # Find LINKS section
             lines = content.split('\n')
             in_links_section = False
-            in_nodes_section = False
             links_count = 0
-            nodes_count = 0
             
             for line in lines:
                 line = line.strip()
                 
-                # Parse NODES section for descriptions
-                if line == "SystemImageGUID, NodeGUID, NodeType, ExtNodeType, NumPorts, VendorID, DeviceID, NodeDesc":
-                    in_nodes_section = True
-                    continue
-                elif in_nodes_section and line.startswith("0x"):
-                    parts = [p.strip() for p in line.split(',')]
-                    if len(parts) >= 8:
-                        node_guid = parts[1]  # NodeGUID is the second field
-                        node_desc = parts[7].strip('"')  # NodeDesc is the 8th field, remove quotes
-                        self.node_descriptions[node_guid] = node_desc
-                        nodes_count += 1
-                elif line.startswith("END_NODES") or (in_nodes_section and line.startswith("START_")):
-                    in_nodes_section = False
-                
-                # Parse LINKS section
-                elif line == "NodeGUID1, PortNum1, NodeGUID2, PortNum2":
+                if line == "NodeGUID1, PortNum1, NodeGUID2, PortNum2":
                     in_links_section = True
                     continue
                 elif line.startswith("0x") and in_links_section:
@@ -190,7 +172,7 @@ class SMDBParser:
                 elif line.startswith("END_") or (in_links_section and not line.startswith("0x") and line):
                     in_links_section = False
                     
-            print(f"Found {nodes_count} nodes and {links_count} total links in SMDB")
+            print(f"Found {links_count} total links in SMDB")
             
         except Exception as e:
             print(f"Error parsing SMDB file: {e}")
@@ -218,10 +200,6 @@ class SMDBParser:
             return "trunk"  # Connected to another switch
         else:
             return "access"  # Connected to GPU
-
-    def get_node_description(self, guid: str) -> str:
-        """Get the node description for a given GUID"""
-        return self.node_descriptions.get(guid, "Unknown")
 
 
 class NMXTableAnalyzer:
@@ -695,14 +673,8 @@ class NMXTableAnalyzer:
                 for i, event in enumerate(group):
                     partner_info = ""
                     if event.link_partner_guid:
-                        # Get full GUID and node description
-                        partner_desc = self.smdb_parser.get_node_description(event.link_partner_guid) if self.smdb_parser else "Unknown"
-                        # Abbreviate description for display
-                        if ";" in partner_desc:
-                            partner_desc_short = partner_desc.split(";")[-1][:20]  # Take last part, max 20 chars
-                        else:
-                            partner_desc_short = partner_desc[:20]  # Max 20 chars
-                        partner_info = f"{event.link_partner_guid}:{event.link_partner_port} ({partner_desc_short})"
+                        partner_guid_short = event.link_partner_guid[-8:]  # Last 8 chars
+                        partner_info = f"{partner_guid_short}:{event.link_partner_port}"
                     
                     state_change = f"{event.state_from}→{event.state_to}"
                     switch_guid_short = event.switch_guid[-8:]  # Last 8 chars for clarity
