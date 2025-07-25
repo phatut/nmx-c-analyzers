@@ -1,0 +1,50 @@
+FABRIC LINK FAILURES AND GPU ERRORS REPORT
+==========================================================================================================================
+
+#   Timestamp           Switch/GPU GUID    Port Type   Event/Error  Details                             XID/Partner          Action         
+--------------------------------------------------------------------------------------------------------------------------
+1   2025-04-11 18:23:56 00e60b00           1    Access UNKNOWN→DOWN Switch-00e60b00                     2c5345ac:5           fab            
+
+2   2025-04-11 18:23:56 00e60b00           2    Access UNKNOWN→DOWN Switch-00e60b00                     56fcd570:5           fab            
+
+3   2025-04-11 18:23:56 00e60b00           3    Access UNKNOWN→DOWN Switch-00e60b00                     bb3a0a00:5           fab            
+
+4   2025-04-11 18:23:56 00e60b00           4    Access UNKNOWN→DOWN Switch-00e60b00                     317e58bf:5           fab            
+
+5   2025-04-11 18:23:56 00e60b00           5    Access UNKNOWN→DOWN Switch-00e60b00                     52063625:5           fab            
+
+6   2025-04-11 18:23:56 00e60b00           6    Access UNKNOWN→DOWN Switch-00e60b00                     91ea7aa1:5           fab            
+
+7   2025-04-11 18:23:56 00e60b00           7    Access UNKNOWN→DOWN Switch-00e60b00                     9d35b95d:5           fab            
+
+8   2025-04-11 18:23:56 00e60b00           8    Access UNKNOWN→DOWN Switch-00e60b00                     143e5a6d:5           fab            
+
+9   2025-04-11 18:23:56 00e60b00           9    Access UNKNOWN→DOWN Switch-00e60b00                     258a6a05:5           fab            
+
+10  2025-04-11 18:23:56 00e60b00           11   Access UNKNOWN→DOWN Switch-00e60b00                     c2f0fddd:5           fab            
+
+11  2025-04-11 18:23:56 00e60b00           12   Access UNKNOWN→DOWN Switch-00e60b00                     149dab0f:5           fab            
+
+12  2025-04-11 18:23:56 00e60b00           13   Access UNKNOWN→DOWN Switch-00e60b00                     7411a10e:5           fab            
+
+13  2025-04-11 18:23:56 00e60b00           14   Access UNKNOWN→DOWN Switch-00e60b00                     2713929c:5           fab            
+
+14  2025-04-11 18:23:56 00e60b00           15   Access UNKNOWN→DOWN Switch-00e60b00                     d21c48dc:5           fab            
+
+15  2025-04-11 18:23:56 00e60b00           16   Access UNKNOWN→DOWN Switch-00e60b00                     40dc1965:5           fab            
+
+16  2025-04-11 18:23:56 00e60b00           17   Access UNKNOWN→DOWN Switch-00e60b00                     d0cc7a33:5           fab            
+
+17  2025-04-11 18:23:56 00e60b00           18   Access UNKNOWN→DOWN Switch-00e60b00                     65ef7a2b:5           fab            
+
+18  2025-04-11 18:23:56 00e60b00           19   Access UNKNOWN→DOWN Switch-00e60b00                     dfb76348:5           fab            
+
+19  2025-04-11 18:23:56 00e60b00           20   Access UNKNOWN→DOWN Switch-00e60b00                     35f68552:5           fab            
+
+20  2025-04-11 18:23:56 00e60b00           21   Access UNKNOWN→DOWN Switch-00e60b00                     ee514f0c:5           fab            
+
+21  2025-04-11 18:23:56 00e60b00           22   Access UNKNOWN→DOWN Switch-00e60b00                     62f18195:5           fab            
+
+22  2025-04-11 18:23:56 00e60b00           23   Access UNKNOWN→DOWN Switch-00e60b00                     beb40201:5           fab            
+
+23  2025-04-11 18:23:56 00e60b00           24   Access UNKNOWN→DOWN Switch-00e60b00                     c8eba4cd:5           fab            
