@@ -24,7 +24,7 @@ Using the SMDB topology data, the analyzer automatically classifies ports as:
 
 ## Real-World Analysis Results
 
-From `nmx-c-3` dataset analysis:
+From real-world dataset analysis:
 - **16,687 port down events** detected
 - **13,202 access ports** (connected to GPUs)
 - **0 trunk ports** (switch-to-switch connections)
