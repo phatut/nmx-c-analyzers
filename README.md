@@ -142,13 +142,13 @@ NodeGUID1, PortNum1, NodeGUID2, PortNum2
 0xb0cf0e0300e31440, 61, 0xb0cf0e0300e42e00, 61
 ```
 
-## 🧠 Intelligence Features
+## Intelligence Features
 
-- **📊 Correlation Analysis**: Matches events across different log sources
-- **🔗 Link Partner Discovery**: Identifies which switches/ports are connected
-- **⏱️ Timestamp Synchronization**: Finds simultaneous failures on link pairs
-- **📈 Confidence Scoring**: Rates correlation quality (HIGH/MEDIUM/LOW)
-- **- Incident Grouping**: Groups related failures for easier analysis
+- Correlation Analysis: Matches events across different log sources
+- Link Partner Discovery: Identifies which switches/ports are connected
+- Timestamp Synchronization: Finds simultaneous failures on link pairs
+- Confidence Scoring: Rates correlation quality (HIGH/MEDIUM/LOW)
+- Incident Grouping: Groups related failures for easier analysis
 
 ##  Quick Tool Comparison
 
