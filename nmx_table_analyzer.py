@@ -111,7 +111,7 @@ class TrunkFailureEvent:
     link_partner_port: Optional[int] = None
     associated_gpu_errors: List[GPUNVLError] = None
     # New fields for port down events
-    port_type: Optional[str] = None  # "access", "trunk", or "legacy"
+    port_type: Optional[str] = None  # "access", "trunk"
     event_type: Optional[str] = None  # "trunk_failure", "port_down"
     
     def __post_init__(self):
@@ -219,7 +219,7 @@ class NMXTableAnalyzer:
         # Parse SMDB if available
         self._init_smdb_parser()
         
-        # Regex patterns for legacy trunk failures
+        # Regex patterns for original trunk failures
         self.trunk_failure_pattern = re.compile(
             r'\[([A-Za-z]{3} \d{1,2} \d{4} \d{2}:\d{2}:\d{2})\] \[WARNING\] \[tid (\d+)\] '
             r'Trunk port failure detected for switch GUID (0x[a-fA-F0-9]+) and switch chassis sn (\d+), '
@@ -298,7 +298,7 @@ class NMXTableAnalyzer:
         """Collect and correlate all failure events from logs"""
         print("Collecting failure events...")
         
-        # Collect fabric manager failures (legacy trunk failures)
+        # Collect fabric manager failures (original trunk failures)
         fm_failures = self._parse_fabric_manager_failures()
         
         # Collect port down events (new format)
@@ -310,7 +310,7 @@ class NMXTableAnalyzer:
         # Collect nvlSM link down events
         sm_events = self._parse_nvlsm_events()
         
-        # Correlate legacy trunk failures
+        # Correlate original trunk failures
         if fm_failures:
             self._correlate_events(fm_failures, sm_events, gpu_errors, "trunk_failure")
         
@@ -442,12 +442,12 @@ class NMXTableAnalyzer:
         return port_events
 
     def _parse_fabric_manager_failures(self) -> List[dict]:
-        """Parse fabric manager logs for legacy trunk failures"""
+        """Parse fabric manager logs for original trunk failures"""
         failures = []
         current_partition_id = None
         
         for log_file in self.fabricmanager_logs:
-            print(f"  Processing FM legacy: {Path(log_file).name}")
+            print(f"  Processing FM original: {Path(log_file).name}")
             try:
                 with gzip.open(log_file, 'rt', encoding='utf-8', errors='ignore') as f:
                     for line in f:
@@ -560,7 +560,7 @@ class NMXTableAnalyzer:
                     link_partner_guid=link_partner_guid,
                     link_partner_port=link_partner_port,
                     associated_gpu_errors=associated_errors,
-                    port_type="legacy",  # Legacy trunk failures
+                    port_type=self.smdb_parser.classify_port_type(failure['switch_guid'], failure['port']) if self.smdb_parser else "trunk",  # Legacy trunk failures
                     event_type=event_type
                 )
                 self.trunk_events.append(event)
@@ -689,7 +689,6 @@ class NMXTableAnalyzer:
                         port_type_display = "Access"
                     elif event.port_type == "trunk":
                         port_type_display = "Trunk"
-                    elif event.port_type == "legacy":
                         port_type_display = "Legacy"
                     
                     line = (
@@ -724,11 +723,10 @@ class NMXTableAnalyzer:
             f.write("\n" + "=" * 122 + "\n")
             access_count = sum(1 for e in self.trunk_events if e.port_type == "access")
             trunk_count = sum(1 for e in self.trunk_events if e.port_type == "trunk")
-            legacy_count = sum(1 for e in self.trunk_events if e.port_type == "legacy")
             gpu_error_count = sum(len(e.associated_gpu_errors) for e in self.trunk_events)
             
             f.write(f"SUMMARY: {len(self.trunk_events)} events in {len(groups)} incidents\n")
-            f.write(f"Port Types: {access_count} access, {trunk_count} trunk, {legacy_count} legacy\n")
+            f.write(f"Port Types: {access_count} access, {trunk_count} trunk\n")
             f.write(f"GPU Errors Correlated: {gpu_error_count}\n")
             if self.smdb_parser:
                 partnered_events = sum(1 for e in self.trunk_events if e.link_partner_guid)
@@ -848,9 +846,8 @@ def main():
     print(f"Events analyzed: {event_count}")
     access_count = sum(1 for e in analyzer.trunk_events if e.port_type == "access")
     trunk_count = sum(1 for e in analyzer.trunk_events if e.port_type == "trunk")
-    legacy_count = sum(1 for e in analyzer.trunk_events if e.port_type == "legacy")
     gpu_count = sum(len(e.associated_gpu_errors) for e in analyzer.trunk_events)
-    print(f"Port breakdown: {access_count} access, {trunk_count} trunk, {legacy_count} legacy")
+    print(f"Port breakdown: {access_count} access, {trunk_count} trunk")
     print(f"GPU errors found: {gpu_count}")
     
     return 0
