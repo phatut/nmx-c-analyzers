@@ -660,7 +660,7 @@ class NMXTableAnalyzer:
             # Table header
             header = (
                 f"{'#':<3} {'Timestamp':<19} {'Switch/GPU GUID':<18} {'Port':<4} {'Type':<6} "
-                f"{'Event/Error':<12} {'Details':<35} {'XID/Partner':<20} {'Action':<15}\n"
+                f"{'Event/Error':<12} {'Details':<35} {'XID/Partner':<20} {'Detected In':<15}\n"
             )
             f.write(header)
             f.write("-" * 122 + "\n")
@@ -689,7 +689,6 @@ class NMXTableAnalyzer:
                         port_type_display = "Access"
                     elif event.port_type == "trunk":
                         port_type_display = "Trunk"
-                        port_type_display = "Legacy"
                     
                     line = (
                         f"{incident_id:<3} {event.timestamp.strftime('%Y-%m-%d %H:%M:%S'):<19} "
