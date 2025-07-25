@@ -47,7 +47,7 @@ def run_analysis_on_folder(folder_path: Path, analyzer_script: Path) -> dict:
         duration = end_time - start_time
         
         if result.returncode == 0:
-            print(f"✅ SUCCESS: Analysis completed in {duration:.2f} seconds")
+            print(f"SUCCESS: Analysis completed in {duration:.2f} seconds")
             
             # Parse results from stdout
             output_lines = result.stdout.strip().split('\n')
@@ -90,18 +90,18 @@ def run_analysis_on_folder(folder_path: Path, analyzer_script: Path) -> dict:
                     except:
                         pass
             
-            print(f"   📊 Events: {summary['events_analyzed']}")
-            print(f"   🔌 Access ports: {summary['access_ports']}")
-            print(f"   🔗 Trunk ports: {summary['trunk_ports']}")
-            print(f"   📜 Legacy ports: {summary['legacy_ports']}")
-            print(f"   🖥️  GPU errors: {summary['gpu_errors']}")
-            print(f"   📄 Table: {table_output.name}")
-            print(f"   📊 CSV: {csv_output.name}")
+            print(f"   Events: {summary['events_analyzed']}")
+            print(f"   Access ports: {summary['access_ports']}")
+            print(f"   Trunk ports: {summary['trunk_ports']}")
+            print(f"   Legacy ports: {summary['legacy_ports']}")
+            print(f"   GPU errors: {summary['gpu_errors']}")
+            print(f"   Table: {table_output.name}")
+            print(f"   CSV: {csv_output.name}")
             
             return summary
             
         else:
-            print(f"❌ FAILED: Return code {result.returncode}")
+            print(f"FAILED: Return code {result.returncode}")
             print(f"   Error: {result.stderr}")
             return {
                 'status': 'failed',
@@ -111,14 +111,14 @@ def run_analysis_on_folder(folder_path: Path, analyzer_script: Path) -> dict:
             }
             
     except subprocess.TimeoutExpired:
-        print(f"⏰ TIMEOUT: Analysis exceeded 5 minutes")
+        print(f"TIMEOUT: Analysis exceeded 5 minutes")
         return {
             'status': 'timeout',
             'duration': 300,
             'error': 'Analysis timeout'
         }
     except Exception as e:
-        print(f"💥 EXCEPTION: {str(e)}")
+        print(f"EXCEPTION: {str(e)}")
         return {
             'status': 'exception',
             'duration': 0,
@@ -128,7 +128,7 @@ def run_analysis_on_folder(folder_path: Path, analyzer_script: Path) -> dict:
 
 def main():
     """Main batch analysis function"""
-    print("🚀 NMX-C BATCH ANALYSIS TOOL")
+    print("NMX-C BATCH ANALYSIS TOOL")
     print("=" * 60)
     
     # Paths
@@ -138,11 +138,11 @@ def main():
     
     # Verify paths
     if not analyzer_script.exists():
-        print(f"❌ ERROR: Analyzer script not found: {analyzer_script}")
+        print(f"ERROR: Analyzer script not found: {analyzer_script}")
         return 1
         
     if not flattened_dir.exists():
-        print(f"❌ ERROR: Data directory not found: {flattened_dir}")
+        print(f"ERROR: Data directory not found: {flattened_dir}")
         return 1
     
     # Find all nmx-c folders
@@ -150,12 +150,12 @@ def main():
                          if f.is_dir() and f.name.startswith('nmx-c-')])
     
     if not nmx_folders:
-        print(f"❌ ERROR: No nmx-c folders found in {flattened_dir}")
+        print(f"ERROR: No nmx-c folders found in {flattened_dir}")
         return 1
     
-    print(f"📁 Found {len(nmx_folders)} folders to analyze")
-    print(f"🔧 Using analyzer: {analyzer_script}")
-    print(f"📂 Data directory: {flattened_dir}")
+    print(f"Found {len(nmx_folders)} folders to analyze")
+    print(f"Using analyzer: {analyzer_script}")
+    print(f"Data directory: {flattened_dir}")
     
     # Run analysis on all folders
     results = {}
@@ -169,10 +169,10 @@ def main():
     
     # Generate summary report
     print(f"\n{'='*80}")
-    print("📋 BATCH ANALYSIS SUMMARY")
+    print("BATCH ANALYSIS SUMMARY")
     print(f"{'='*80}")
-    print(f"⏱️  Total time: {total_duration:.2f} seconds ({total_duration/60:.1f} minutes)")
-    print(f"📁 Folders processed: {len(nmx_folders)}")
+    print(f"Total time: {total_duration:.2f} seconds ({total_duration/60:.1f} minutes)")
+    print(f"Folders processed: {len(nmx_folders)}")
     
     # Count results by status
     successful = sum(1 for r in results.values() if r.get('status') == 'success')
@@ -180,10 +180,10 @@ def main():
     timeouts = sum(1 for r in results.values() if r.get('status') == 'timeout')
     exceptions = sum(1 for r in results.values() if r.get('status') == 'exception')
     
-    print(f"✅ Successful: {successful}")
-    print(f"❌ Failed: {failed}")
-    print(f"⏰ Timeouts: {timeouts}")
-    print(f"💥 Exceptions: {exceptions}")
+    print(f"Successful: {successful}")
+    print(f"Failed: {failed}")
+    print(f"Timeouts: {timeouts}")
+    print(f"Exceptions: {exceptions}")
     
     # Aggregate statistics from successful runs
     if successful > 0:
@@ -193,16 +193,16 @@ def main():
         total_legacy = sum(r.get('legacy_ports', 0) for r in results.values() if r.get('status') == 'success')
         total_gpu_errors = sum(r.get('gpu_errors', 0) for r in results.values() if r.get('status') == 'success')
         
-        print(f"\n📊 AGGREGATE STATISTICS:")
-        print(f"   🔢 Total events: {total_events:,}")
-        print(f"   🔌 Total access ports: {total_access:,}")
-        print(f"   🔗 Total trunk ports: {total_trunk:,}")
-        print(f"   📜 Total legacy ports: {total_legacy:,}")
-        print(f"   🖥️  Total GPU errors: {total_gpu_errors:,}")
+        print(f"\nAGGREGATE STATISTICS:")
+        print(f"   Total events: {total_events:,}")
+        print(f"   Total access ports: {total_access:,}")
+        print(f"   Total trunk ports: {total_trunk:,}")
+        print(f"   Total legacy ports: {total_legacy:,}")
+        print(f"   Total GPU errors: {total_gpu_errors:,}")
     
     # Show failed analyses
     if failed > 0 or timeouts > 0 or exceptions > 0:
-        print(f"\n❌ FAILED ANALYSES:")
+        print(f"\nFAILED ANALYSES:")
         for folder_name, result in results.items():
             if result.get('status') != 'success':
                 status = result.get('status', 'unknown')
@@ -232,8 +232,8 @@ def main():
                 f.write(f"Error: {result.get('error', 'Unknown')}\n")
             f.write("\n")
     
-    print(f"\n📄 Detailed summary saved to: {summary_file}")
-    print(f"\n🎉 Batch analysis complete!")
+    print(f"\nDetailed summary saved to: {summary_file}")
+    print(f"\nBatch analysis complete!")
     
     return 0 if successful == len(nmx_folders) else 1
 
