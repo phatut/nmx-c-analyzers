@@ -71,10 +71,41 @@ class GPUNVLError:
     error_code: str
     error_subcode: str
     error_data: str
-    equivalent_xid: Optional[int]
-    resolution: str
-    description: str
-    source_file: str
+    equivalent_xid: Optional[int] = None
+    resolution: str = "Unknown"
+    description: str = "GPU NVL Error"
+    source_file: str = ""
+    
+    def __post_init__(self):
+        """Auto-map to XID equivalent after initialization"""
+        self.map_to_xid_equivalent()
+    
+    def map_to_xid_equivalent(self):
+        """Map GPU NVL error codes to equivalent XID information"""
+        # Map common error codes to XID equivalents
+        error_key = f"{self.error_code}_{self.error_subcode}"
+        
+        # Comprehensive XID mapping based on NVIDIA documentation
+        xid_mapping = {
+            "0x02_0x07": {"xid": 149, "resolution": "RESET_GPU", "description": "NVLink port down event"},
+            "0x02_0x08": {"xid": 145, "resolution": "RESET_GPU", "description": "NVLink recovery event"},
+            "0x01_0x01": {"xid": 144, "resolution": "INVESTIGATE", "description": "NVLink training failure"},
+            "0x03_0x01": {"xid": 150, "resolution": "RESET_GPU", "description": "NVLink timeout error"},
+            "0x02_0x01": {"xid": 149, "resolution": "RESET_GPU", "description": "NVLink lane failure"},
+            "0x01_0x02": {"xid": 144, "resolution": "CHECK_CABLES", "description": "NVLink link training error"},
+            "0x04_0x01": {"xid": 151, "resolution": "RESET_GPU", "description": "NVLink protocol error"},
+        }
+        
+        if error_key in xid_mapping:
+            mapping = xid_mapping[error_key]
+            self.equivalent_xid = mapping["xid"]
+            self.resolution = mapping["resolution"]
+            self.description = mapping["description"]
+        else:
+            # Default for unmapped errors
+            self.equivalent_xid = 149  # Generic NVLink error
+            self.resolution = "INVESTIGATE"
+            self.description = "Unmapped GPU NVL Error"
 
 class FastSMDBParser:
     """Optimized SMDB parser with caching and parallel processing"""
@@ -223,7 +254,10 @@ class FastLogProcessor:
         events = []
         lines = chunk.split('\n')
         
-        for line in lines:
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            
             # Trunk failures
             match = self.patterns['trunk_failure'].search(line)
             if match:
@@ -237,7 +271,9 @@ class FastLogProcessor:
                         'source': source_file
                     })
                 except (ValueError, IndexError):
-                    continue
+                    pass
+                i += 1
+                continue
             
             # Port down events
             match = self.patterns['port_down'].search(line)
@@ -252,9 +288,92 @@ class FastLogProcessor:
                         'source': source_file
                     })
                 except (ValueError, IndexError):
-                    continue
+                    pass
+                i += 1
+                continue
+            
+            # GPU NVL errors (multi-line parsing)
+            match = self.patterns['gpu_nvl_start'].search(line)
+            if match:
+                gpu_error = self._parse_gpu_nvl_error_multiline(lines, i, source_file)
+                if gpu_error:
+                    events.append(gpu_error)
+                i += 1
+                continue
+            
+            i += 1
         
         return events
+    
+    def _parse_gpu_nvl_error_multiline(self, lines: List[str], start_idx: int, source_file: str) -> Optional[Dict]:
+        """Parse multi-line GPU NVL error starting from start_idx"""
+        try:
+            # Parse the header line
+            header_line = lines[start_idx]
+            timestamp_match = re.search(r'\[([^]]+)\]', header_line)
+            if not timestamp_match:
+                return None
+            
+            timestamp = self._parse_timestamp(timestamp_match.group(1))
+            
+            # Look for detailed error information in subsequent lines
+            error_details = {}
+            for i in range(start_idx + 1, min(start_idx + 20, len(lines))):
+                line = lines[i].strip()
+                if not line or 'Fabric Manager detected' in line:
+                    break
+                
+                # Parse key-value pairs
+                if ':' in line:
+                    parts = line.split(':', 1)
+                    if len(parts) == 2:
+                        key = parts[0].strip()
+                        value = parts[1].strip()
+                        
+                        # Map common fields
+                        if 'gpuGuid' in key:
+                            error_details['gpu_guid'] = value
+                        elif 'switchGuid' in key:
+                            error_details['switch_guid'] = value
+                        elif 'switchInstance' in key:
+                            error_details['switch_instance'] = int(value) if value.isdigit() else 0
+                        elif 'gpuInstance' in key:
+                            error_details['gpu_instance'] = int(value) if value.isdigit() else 0
+                        elif 'partitionId' in key:
+                            error_details['partition_id'] = int(value) if value.isdigit() else 0
+                        elif 'nvlLink' in key:
+                            error_details['nvl_link'] = int(value) if value.isdigit() else 0
+                        elif 'linkId' in key:
+                            error_details['link_id'] = int(value) if value.isdigit() else 0
+                        elif 'errorCode' in key:
+                            error_details['error_code'] = value
+                        elif 'errorSubcode' in key:
+                            error_details['error_subcode'] = value
+                        elif 'errorData' in key:
+                            error_details['error_data'] = value
+                        elif 'portNum' in key:
+                            error_details['port_num'] = int(value) if value.isdigit() else None
+            
+            # Create GPU NVL error event
+            return {
+                'type': 'gpu_nvl_error',
+                'timestamp': timestamp,
+                'gpu_guid': error_details.get('gpu_guid', 'Unknown'),
+                'switch_guid': error_details.get('switch_guid', 'Unknown'),
+                'port_num': error_details.get('port_num'),
+                'error_code': error_details.get('error_code', '0x00'),
+                'error_subcode': error_details.get('error_subcode', '0x00'),
+                'error_data': error_details.get('error_data', ''),
+                'switch_instance': error_details.get('switch_instance', 0),
+                'gpu_instance': error_details.get('gpu_instance', 0),
+                'partition_id': error_details.get('partition_id', 0),
+                'nvl_link': error_details.get('nvl_link', 0),
+                'link_id': error_details.get('link_id', 0),
+                'source': source_file
+            }
+            
+        except Exception as e:
+            return None
     
     def _parse_nvlsm_chunk(self, chunk: str, source_file: str) -> List:
         """Parse nvlsm log chunk"""
@@ -461,8 +580,18 @@ class FastNMXTableAnalyzer:
             time_key = event['timestamp'].replace(second=0, microsecond=0)
             nvlsm_index[time_key].append(event)
         
+        # Create GPU error index for correlation
+        gpu_error_index = defaultdict(list)
+        gpu_errors = [e for e in raw_events['fabricmanager'] if e['type'] == 'gpu_nvl_error']
+        for gpu_event in gpu_errors:
+            time_key = gpu_event['timestamp'].replace(second=0, microsecond=0)
+            gpu_error_index[time_key].append(gpu_event)
+        
         # Process fabricmanager events and correlate
         for fm_event in raw_events['fabricmanager']:
+            if fm_event['type'] == 'gpu_nvl_error':
+                continue  # Skip GPU errors here, they'll be correlated with trunk events
+            
             # Create TrunkFailureEvent or PortDownEvent
             if fm_event['type'] == 'trunk_failure':
                 event = TrunkFailureEvent(
@@ -503,6 +632,37 @@ class FastNMXTableAnalyzer:
                         event.state_to = nvl_event['state_to']
                         break
             
+            # Correlate with GPU NVL errors (5-second window)
+            gpu_time_window = timedelta(seconds=5)
+            for delta in [0, -1, 1]:
+                check_time = fm_event['timestamp'].replace(second=0, microsecond=0) + timedelta(minutes=delta)
+                
+                for gpu_event in gpu_error_index.get(check_time, []):
+                    if (gpu_event['switch_guid'] == fm_event['switch_guid'] and
+                        gpu_event['port_num'] == fm_event['port'] and
+                        abs((gpu_event['timestamp'] - fm_event['timestamp']).total_seconds()) <= gpu_time_window.total_seconds()):
+                        
+                        # Create GPUNVLError object with XID mapping
+                        gpu_error_obj = GPUNVLError(
+                            timestamp=gpu_event['timestamp'],
+                            gpu_guid=gpu_event['gpu_guid'],
+                            port_num=gpu_event['port_num'],
+                            error_timestamp=gpu_event['timestamp'],
+                            severity="Non Fatal",
+                            switch_guid=gpu_event['switch_guid'],
+                            switch_instance=gpu_event['switch_instance'],
+                            gpu_instance=gpu_event['gpu_instance'],
+                            partition_id=gpu_event['partition_id'],
+                            nvl_link=gpu_event['nvl_link'],
+                            link_id=gpu_event['link_id'],
+                            error_code=gpu_event['error_code'],
+                            error_subcode=gpu_event['error_subcode'],
+                            error_data=gpu_event['error_data'],
+                            source_file=Path(gpu_event['source']).name
+                        )
+                        
+                        event.associated_gpu_errors.append(gpu_error_obj)
+            
             # Add link partner information
             if self.smdb_parser._cache_loaded:
                 partner = self.smdb_parser.get_link_partner(event.switch_guid, event.port)
@@ -533,13 +693,13 @@ class FastNMXTableAnalyzer:
             f.write(f"  Trunk Ports: {trunk_count}\n")
             f.write(f"  Workers Used: {self.max_workers}\n\n")
             
-            # Table header
+            # Table header  
             header = (
-                f"{'#':<3} {'Timestamp':<19} {'GUID':<12} {'Port':<4} {'Type':<6} "
-                f"{'Event':<12} {'Partner':<20} {'Sources':<15}\n"
+                f"{'#':<3} {'Timestamp':<19} {'Switch/GPU GUID':<18} {'Port':<4} {'Type':<6} "
+                f"{'Event/Error':<12} {'Details':<25} {'XID/Partner':<30} {'Detected In':<15}\n"
             )
             f.write(header)
-            f.write("-" * 92 + "\n")
+            f.write("-" * 132 + "\n")
             
             # Write events
             for i, group in enumerate(groups, 1):
@@ -549,10 +709,10 @@ class FastNMXTableAnalyzer:
                         partner_guid_short = event.link_partner_guid[-8:]
                         partner_desc = self.smdb_parser.get_node_description(event.link_partner_guid)
                         if ";" in partner_desc:
-                            partner_desc_short = partner_desc.split(";")[-1].split(":")[0][:10]
+                            partner_desc_short = partner_desc.split(";")[-1].split(":")[0][:15]
                         else:
-                            partner_desc_short = partner_desc[:10]
-                        partner_info = f"{partner_guid_short}:{event.link_partner_port}"
+                            partner_desc_short = partner_desc[:15]
+                        partner_info = f"{partner_guid_short}:{event.link_partner_port} ({partner_desc_short})"
                     else:
                         partner_info = "Unknown"
                     
@@ -565,13 +725,31 @@ class FastNMXTableAnalyzer:
                     switch_guid_short = event.switch_guid[-8:]
                     state_change = f"{event.state_from}→{event.state_to}"
                     port_type = event.port_type.title()[:6]
+                    switch_name_short = event.switch_name.split(';')[-1][:25] if ';' in event.switch_name else event.switch_name[:25]
                     
                     line = (
                         f"{incident_id:<3} {event.timestamp.strftime('%Y-%m-%d %H:%M:%S'):<19} "
-                        f"{switch_guid_short:<12} {event.port:<4} {port_type:<6} "
-                        f"{state_change:<12} {partner_info:<20} {sources:<15}\n"
+                        f"{switch_guid_short:<18} {event.port:<4} {port_type:<6} "
+                        f"{state_change:<12} {switch_name_short:<25} {partner_info:<30} {sources:<15}\n"
                     )
                     f.write(line)
+                    
+                    # Add associated GPU NVL errors as indented sub-entries
+                    if event.associated_gpu_errors:
+                        for gpu_error in event.associated_gpu_errors:
+                            error_time_str = gpu_error.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                            error_code_str = f"{gpu_error.error_code}/{gpu_error.error_subcode}" if gpu_error.error_code and gpu_error.error_subcode else "N/A"
+                            equivalent_xid_str = f"XID-{gpu_error.equivalent_xid}" if gpu_error.equivalent_xid else "N/A"
+                            gpu_guid_short = gpu_error.gpu_guid[-8:] if gpu_error.gpu_guid else "N/A"
+                            severity_short = gpu_error.severity.replace(" ", "")[:8]  # "NonFatal" or "Fatal"
+                            
+                            # Indented sub-line for GPU error
+                            gpu_line = (
+                                f"{'├─':<3} {error_time_str:<19} "
+                                f"GPU:{gpu_guid_short:<13} {gpu_error.port_num or 'N/A':<4} {'GPU':<4} "
+                                f"{severity_short:<12} {error_code_str:<25} {equivalent_xid_str:<30} {gpu_error.resolution or 'N/A':<15}\n"
+                            )
+                            f.write(gpu_line)
                 
                 if len(group) > 1:
                     f.write("\n")
