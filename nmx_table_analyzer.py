@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 NMX-C Fabric Table Analysis Tool
-Creates table format reports for trunk port failures, port down events, and GPU NVL errors.
-Enhanced with access port vs trunk port classification.
+Creates table format reports for trunk port failures with link partner correlation.
+Includes GPU NVL error parsing and correlation.
 """
 
 import re
@@ -17,64 +17,53 @@ from pathlib import Path
 
 @dataclass
 class GPUNVLError:
-    """GPU NVL error event with XID correlation"""
+    """Represents a GPU NVL error from fabric manager logs"""
     timestamp: datetime
-    tid: int
+    tid: Optional[int]
     severity: str  # "Non Fatal" or "Fatal"
-    moduleId: int
-    nodeId: int
-    partition_id: int
-    gpu_guid: str
-    port_num: int
-    port_status: int
-    error_code: str
-    error_subcode: str
-    port_down_reason_code: str
-    is_error_first: int
-    error_status: str
-    error_debug_data: str
+    module_id: Optional[int] = None
+    node_id: Optional[int] = None
+    partition_id: Optional[int] = None
+    gpu_guid: Optional[str] = None
+    port_num: Optional[int] = None
+    port_status: Optional[int] = None
+    error_code: Optional[str] = None
+    error_subcode: Optional[str] = None
+    port_down_reason_code: Optional[str] = None
+    is_error_first: Optional[int] = None
+    error_status: Optional[str] = None
+    error_debug_data: Optional[str] = None
     source_file: Optional[str] = None
-    # XID equivalent fields
+    
+    # XID-equivalent fields for correlation
     equivalent_xid: Optional[int] = None
     resolution: Optional[str] = None
     comments: Optional[str] = None
     
-    def __post_init__(self):
-        """Map GPU NVL error to XID equivalent"""
-        self.map_to_xid_equivalent()
-    
     def map_to_xid_equivalent(self):
-        """Map GPU error codes to known XID equivalents"""
-        # GPU NVL error code to XID mapping
-        error_mappings = {
-            "0x02_0x07": {
-                "xid": 149,
-                "resolution": "RESET_GPU",
-                "comments": "GPU NVL Non-Fatal Error - Link training failure"
-            },
-            "0x03_0x01": {
-                "xid": 79,
-                "resolution": "RESET_GPU", 
-                "comments": "GPU NVL Fatal Error - Critical link failure"
-            },
-            "0x01_0x05": {
-                "xid": 149,
-                "resolution": "CHECK_CABLE",
-                "comments": "GPU NVL Error - Physical layer issue"
+        """Map GPU NVL error codes to equivalent XID information"""
+        # Map common error codes to XID equivalents
+        if self.error_code and self.error_subcode:
+            error_key = f"{self.error_code}_{self.error_subcode}"
+            
+            # Common mappings based on NVLink error patterns
+            xid_mapping = {
+                "0x02_0x07": {"xid": 149, "resolution": "RESET_GPU", "comments": "NVLink port down event"},
+                "0x02_0x08": {"xid": 145, "resolution": "RESET_GPU", "comments": "NVLink recovery event"},
+                "0x01_0x01": {"xid": 144, "resolution": "INVESTIGATE", "comments": "NVLink training failure"},
+                "0x03_0x01": {"xid": 150, "resolution": "RESET_GPU", "comments": "NVLink timeout error"},
             }
-        }
-        
-        error_key = f"{self.error_code}_{self.error_subcode}"
-        if error_key in error_mappings:
-            mapping = error_mappings[error_key]
-            self.equivalent_xid = mapping["xid"]
-            self.resolution = mapping["resolution"]
-            self.comments = mapping["comments"]
-        else:
-            # Default mapping for unknown error codes
-            self.equivalent_xid = 149  # Generic NVLink error
-            self.resolution = "INVESTIGATE"
-            self.comments = f"GPU NVL Error: {self.error_code}/{self.error_subcode}"
+            
+            if error_key in xid_mapping:
+                mapping = xid_mapping[error_key]
+                self.equivalent_xid = mapping["xid"]
+                self.resolution = mapping["resolution"]
+                self.comments = mapping["comments"]
+            else:
+                # Default mapping for unknown error codes
+                self.equivalent_xid = 149  # Generic NVLink error
+                self.resolution = "INVESTIGATE"
+                self.comments = f"GPU NVL Error: {self.error_code}/{self.error_subcode}"
 
 
 @dataclass
@@ -111,7 +100,7 @@ class TrunkFailureEvent:
     link_partner_port: Optional[int] = None
     associated_gpu_errors: List[GPUNVLError] = None
     # New fields for port down events
-    port_type: Optional[str] = None  # "access", "trunk"
+    port_type: Optional[str] = None  # "access" or "trunk"
     event_type: Optional[str] = None  # "trunk_failure", "port_down"
     
     def __post_init__(self):
@@ -121,7 +110,7 @@ class TrunkFailureEvent:
 
 @dataclass 
 class LinkPartner:
-    """Represents a link connection between two switches or switch-to-GPU"""
+    """Represents a link connection between two switches"""
     guid1: str
     port1: int
     guid2: str
@@ -138,24 +127,24 @@ class SMDBParser:
         self.node_descriptions: Dict[str, str] = {}  # NodeGUID -> NodeDesc
         
     def parse(self):
-        """Parse SMDB file and extract all link topology (switch-switch and switch-GPU)"""
+        """Parse SMDB file and extract link topology"""
         print(f"Parsing SMDB file: {Path(self.smdb_file).name}")
         
         try:
             with gzip.open(self.smdb_file, 'rt', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
                 
-            # Find LINKS section
+            # Parse NODES section first for node descriptions
             lines = content.split('\n')
-            in_links_section = False
             in_nodes_section = False
+            in_links_section = False
             links_count = 0
             nodes_count = 0
             
             for line in lines:
                 line = line.strip()
                 
-                # Parse NODES section for descriptions
+                # Parse NODES section for node descriptions
                 if line == "SystemImageGUID, NodeGUID, NodeType, ExtNodeType, NumPorts, VendorID, DeviceID, NodeDesc":
                     in_nodes_section = True
                     continue
@@ -176,6 +165,7 @@ class SMDBParser:
                 elif line.startswith("0x") and in_links_section:
                     parts = [p.strip() for p in line.split(',')]
                     if len(parts) >= 4:
+                        # Capture ALL links (switch-to-switch and switch-to-GPU)
                         try:
                             link = LinkPartner(
                                 guid1=parts[0],
@@ -190,7 +180,7 @@ class SMDBParser:
                 elif line.startswith("END_") or (in_links_section and not line.startswith("0x") and line):
                     in_links_section = False
                     
-            print(f"Found {nodes_count} nodes and {links_count} total links in SMDB")
+            print(f"Found {nodes_count} nodes and {links_count} trunk links in SMDB")
             
         except Exception as e:
             print(f"Error parsing SMDB file: {e}")
@@ -218,14 +208,14 @@ class SMDBParser:
             return "trunk"  # Connected to another switch
         else:
             return "access"  # Connected to GPU
-
+    
     def get_node_description(self, guid: str) -> str:
         """Get the node description for a given GUID"""
         return self.node_descriptions.get(guid, "Unknown")
 
 
 class NMXTableAnalyzer:
-    """Enhanced analyzer for table format trunk failure reports with GPU correlation"""
+    """Enhanced analyzer for table format trunk failure reports"""
     
     def __init__(self, nmx_directory: str = ".", max_rotated_files: int = 10):
         self.nmx_directory = Path(nmx_directory)
@@ -241,7 +231,7 @@ class NMXTableAnalyzer:
         # Parse SMDB if available
         self._init_smdb_parser()
         
-        # Regex patterns for original trunk failures
+        # Regex patterns
         self.trunk_failure_pattern = re.compile(
             r'\[([A-Za-z]{3} \d{1,2} \d{4} \d{2}:\d{2}:\d{2})\] \[WARNING\] \[tid (\d+)\] '
             r'Trunk port failure detected for switch GUID (0x[a-fA-F0-9]+) and switch chassis sn (\d+), '
@@ -251,6 +241,12 @@ class NMXTableAnalyzer:
         self.trunk_link_failure_pattern = re.compile(
             r'\[([A-Za-z]{3} \d{1,2} \d{4} \d{2}:\d{2}:\d{2})\] \[WARNING\] \[tid (\d+)\] '
             r'Detected a trunk link failure event for partition Id (\d+)\.'
+        )
+        
+        self.link_down_pattern = re.compile(
+            r'([A-Za-z]{3} \d{1,2} \d{2}:\d{2}:\d{2}) \d+ \[([A-Z0-9]+)\] 0x\d{2} -> '
+            r'osm_(?:spst|pi)_rcv_process: Switch (0x[a-fA-F0-9]+) ([^;]+);([^:]+):([^/]+)/[^ ]+ '
+            r'port (\d+)(?:\([^)]+\))? changed state from (\w+) to (\w+)'
         )
         
         # GPU NVL error patterns
@@ -264,12 +260,6 @@ class NMXTableAnalyzer:
             r'\[([A-Za-z]{3} \d{1,2} \d{4} \d{2}:\d{2}:\d{2})\] \[INFO\] \[tid (\d+)\] '
             r'fabric manager received port down event on switch with GUID (0x[a-fA-F0-9]+), '
             r'port GUID (0x[a-fA-F0-9]+), and port num (\d+)'
-        )
-        
-        self.link_down_pattern = re.compile(
-            r'([A-Za-z]{3} \d{1,2} \d{2}:\d{2}:\d{2}) \d+ \[([A-Z0-9]+)\] 0x\d{2} -> '
-            r'osm_(?:spst|pi)_rcv_process: Switch (0x[a-fA-F0-9]+) ([^;]+);([^:]+):([^/]+)/[^ ]+ '
-            r'port (\d+)(?:\([^)]+\))? changed state from (\w+) to (\w+)'
         )
 
     def _discover_nmx_files(self):
@@ -320,7 +310,7 @@ class NMXTableAnalyzer:
         """Collect and correlate all failure events from logs"""
         print("Collecting failure events...")
         
-        # Collect fabric manager failures (original trunk failures)
+        # Collect fabric manager failures (legacy trunk failures)
         fm_failures = self._parse_fabric_manager_failures()
         
         # Collect port down events (new format)
@@ -332,7 +322,7 @@ class NMXTableAnalyzer:
         # Collect nvlSM link down events
         sm_events = self._parse_nvlsm_events()
         
-        # Correlate original trunk failures
+        # Correlate legacy trunk failures
         if fm_failures:
             self._correlate_events(fm_failures, sm_events, gpu_errors, "trunk_failure")
         
@@ -349,69 +339,107 @@ class NMXTableAnalyzer:
             trunk_ports = sum(1 for event in self.trunk_events if event.port_type == "trunk")
             print(f"Debug: {access_ports} access ports, {trunk_ports} trunk ports")
 
+    def _parse_fabric_manager_failures(self) -> List[dict]:
+        """Parse fabric manager logs for trunk failures"""
+        failures = []
+        current_partition_id = None
+        
+        for log_file in self.fabricmanager_logs:
+            print(f"  Processing FM: {Path(log_file).name}")
+            try:
+                with gzip.open(log_file, 'rt', encoding='utf-8', errors='ignore') as f:
+                    for line in f:
+                        # Check for partition failure events first
+                        match = self.trunk_link_failure_pattern.search(line)
+                        if match:
+                            current_partition_id = int(match.group(3))
+                            continue
+                            
+                        # Check for trunk port failures
+                        match = self.trunk_failure_pattern.search(line)
+                        if match:
+                            failure = {
+                                'timestamp': self.parse_timestamp_fm(match.group(1)),
+                                'tid': int(match.group(2)),
+                                'switch_guid': match.group(3),
+                                'chassis_sn': match.group(4),
+                                'slot': int(match.group(5)),
+                                'port': int(match.group(6)),
+                                'port_guid': match.group(7),
+                                'cage': int(match.group(8)),
+                                'partition_id': current_partition_id,
+                                'source': Path(log_file).name
+                            }
+                            failures.append(failure)
+            except Exception as e:
+                print(f"  Error processing {Path(log_file).name}: {e}")
+        
+        return failures
+
     def _parse_gpu_nvl_errors(self) -> List[GPUNVLError]:
         """Parse fabric manager logs for GPU NVL errors"""
         gpu_errors = []
         
         for log_file in self.fabricmanager_logs:
-            print(f"  Processing GPU errors: {Path(log_file).name}")
+            print(f"  Processing GPU NVL errors: {Path(log_file).name}")
             try:
                 with gzip.open(log_file, 'rt', encoding='utf-8', errors='ignore') as f:
-                    content = f.read()
-                    lines = content.split('\n')
-                    
+                    lines = f.readlines()
                     i = 0
                     while i < len(lines):
                         line = lines[i]
                         match = self.gpu_nvl_error_pattern.search(line)
                         if match:
-                            timestamp = self.parse_timestamp_fm(match.group(1))
-                            tid = int(match.group(2))
-                            severity = match.group(3)
+                            # Found GPU NVL error header, parse the multi-line data
+                            error = GPUNVLError(
+                                timestamp=self.parse_timestamp_fm(match.group(1)),
+                                tid=int(match.group(2)),
+                                severity=match.group(3),
+                                source_file=Path(log_file).name
+                            )
                             
-                            # Parse multi-line GPU error details
-                            gpu_data = {}
-                            j = i + 1
-                            while j < len(lines) and j < i + 20:  # Look ahead up to 20 lines
-                                detail_line = lines[j].strip()
-                                if ':' in detail_line and not detail_line.startswith('['):
-                                    parts = detail_line.split(':', 1)
-                                    if len(parts) == 2:
-                                        key = parts[0].strip()
-                                        value = parts[1].strip()
-                                        gpu_data[key] = value
-                                elif detail_line.startswith('[') or not detail_line:
-                                    break
-                                j += 1
-                            
-                            # Create GPU error object if we have essential data
-                            if all(key in gpu_data for key in ['moduleId', 'nodeId', 'gpuGuid', 'portNum', 'errorCode', 'errorSubcode']):
-                                gpu_error = GPUNVLError(
-                                    timestamp=timestamp,
-                                    tid=tid,
-                                    severity=severity,
-                                    moduleId=int(gpu_data.get('moduleId', 0)),
-                                    nodeId=int(gpu_data.get('nodeId', 0)),
-                                    partition_id=int(gpu_data.get('partitionId', 0)),
-                                    gpu_guid=gpu_data.get('gpuGuid', ''),
-                                    port_num=int(gpu_data.get('portNum', 0)),
-                                    port_status=int(gpu_data.get('portStatus', 0)),
-                                    error_code=gpu_data.get('errorCode', ''),
-                                    error_subcode=gpu_data.get('errorSubcode', ''),
-                                    port_down_reason_code=gpu_data.get('portDownReasonCode', ''),
-                                    is_error_first=int(gpu_data.get('isErrorFirst', 0)),
-                                    error_status=gpu_data.get('errorStatus', ''),
-                                    error_debug_data=gpu_data.get('errorDebugData', ''),
-                                    source_file=Path(log_file).name
-                                )
-                                gpu_errors.append(gpu_error)
-                            
-                            i = j  # Continue from where we left off
-                        else:
+                            # Parse the subsequent lines for error details
                             i += 1
+                            while i < len(lines) and lines[i].strip():
+                                detail_line = lines[i].strip()
+                                if ':' in detail_line:
+                                    key, value = detail_line.split(':', 1)
+                                    key = key.strip()
+                                    value = value.strip()
+                                    
+                                    if key == 'moduleId':
+                                        error.module_id = int(value) if value.isdigit() else None
+                                    elif key == 'nodeId':
+                                        error.node_id = int(value) if value.isdigit() else None
+                                    elif key == 'partitionId':
+                                        error.partition_id = int(value) if value.isdigit() else None
+                                    elif key == 'gpuGuid':
+                                        error.gpu_guid = value
+                                    elif key == 'portNum':
+                                        error.port_num = int(value) if value.isdigit() else None
+                                    elif key == 'portStatus':
+                                        error.port_status = int(value) if value.isdigit() else None
+                                    elif key == 'errorCode':
+                                        error.error_code = value
+                                    elif key == 'errorSubcode':
+                                        error.error_subcode = value
+                                    elif key == 'portDownReasonCode':
+                                        error.port_down_reason_code = value
+                                    elif key == 'isErrorFirst':
+                                        error.is_error_first = int(value) if value.isdigit() else None
+                                    elif key == 'errorStatus':
+                                        error.error_status = value
+                                    elif key == 'errorDebugData':
+                                        error.error_debug_data = value
+                                i += 1
                             
+                            # Map to XID equivalent information
+                            error.map_to_xid_equivalent()
+                            gpu_errors.append(error)
+                            continue
+                        i += 1
             except Exception as e:
-                print(f"  Error processing GPU errors in {Path(log_file).name}: {e}")
+                print(f"  Error processing GPU NVL errors in {Path(log_file).name}: {e}")
         
         print(f"Found {len(gpu_errors)} GPU NVL errors")
         return gpu_errors
@@ -462,43 +490,6 @@ class NMXTableAnalyzer:
         
         print(f"Found {len(port_events)} port down events")
         return port_events
-
-    def _parse_fabric_manager_failures(self) -> List[dict]:
-        """Parse fabric manager logs for original trunk failures"""
-        failures = []
-        current_partition_id = None
-        
-        for log_file in self.fabricmanager_logs:
-            print(f"  Processing FM original: {Path(log_file).name}")
-            try:
-                with gzip.open(log_file, 'rt', encoding='utf-8', errors='ignore') as f:
-                    for line in f:
-                        # Check for partition failure events first
-                        match = self.trunk_link_failure_pattern.search(line)
-                        if match:
-                            current_partition_id = int(match.group(3))
-                            continue
-                            
-                        # Check for trunk port failures
-                        match = self.trunk_failure_pattern.search(line)
-                        if match:
-                            failure = {
-                                'timestamp': self.parse_timestamp_fm(match.group(1)),
-                                'tid': int(match.group(2)),
-                                'switch_guid': match.group(3),
-                                'chassis_sn': match.group(4),
-                                'slot': int(match.group(5)),
-                                'port': int(match.group(6)),
-                                'port_guid': match.group(7),
-                                'cage': int(match.group(8)),
-                                'partition_id': current_partition_id,
-                                'source': Path(log_file).name
-                            }
-                            failures.append(failure)
-            except Exception as e:
-                print(f"  Error processing {Path(log_file).name}: {e}")
-        
-        return failures
 
     def _parse_nvlsm_events(self) -> List[dict]:
         """Parse nvlSM logs for link down events"""
@@ -555,6 +546,7 @@ class NMXTableAnalyzer:
                         link_partner_guid, link_partner_port = partner
                 
                 # Find associated GPU NVL errors with TIGHT correlation (≤5 seconds)
+                # GPU errors should happen just before trunk failures in a realistic failure cascade
                 associated_errors = []
                 for gpu_error in gpu_errors:
                     error_time_delta = abs((failure['timestamp'] - gpu_error.timestamp).total_seconds())
@@ -582,7 +574,7 @@ class NMXTableAnalyzer:
                     link_partner_guid=link_partner_guid,
                     link_partner_port=link_partner_port,
                     associated_gpu_errors=associated_errors,
-                    port_type=self.smdb_parser.classify_port_type(failure['switch_guid'], failure['port']) if self.smdb_parser else "trunk",  # Original trunk failures
+                    port_type=self.smdb_parser.classify_port_type(failure['switch_guid'], failure['port']) if self.smdb_parser else "trunk",  # Classify using SMDB
                     event_type=event_type
                 )
                 self.trunk_events.append(event)
@@ -670,19 +662,18 @@ class NMXTableAnalyzer:
         return groups
 
     def generate_table_report(self, output_file: str = "trunk_failures_table.txt"):
-        """Generate enhanced table format report with GPU errors"""
+        """Generate table format report"""
         print("Generating table format report...")
         
         groups = self._group_link_partners()
-        
         with open(output_file, 'w') as f:
             f.write("FABRIC LINK FAILURES AND GPU ERRORS REPORT\n")
-            f.write("=" * 152 + "\n\n")
+            f.write("=" * 120 + "\n\n")
             
             # Table header
             header = (
                 f"{'#':<3} {'Timestamp':<19} {'Switch/GPU GUID':<18} {'Port':<4} {'Type':<6} "
-                f"{'Event/Error':<12} {'Details':<35} {'XID/Partner':<20} {'Detected In':<15}\n"
+                f"{'Event/Error':<12} {'Details':<25} {'Link Partner (GUID:Port Description)':<50} {'Detected In':<15}\n"
             )
             f.write(header)
             f.write("-" * 152 + "\n")
@@ -695,24 +686,32 @@ class NMXTableAnalyzer:
                 for i, event in enumerate(group):
                     partner_info = ""
                     if event.link_partner_guid:
-                        # Get full GUID and node description
+                        # Get abbreviated GUID and node description
+                        partner_guid_short = event.link_partner_guid[-8:]  # Last 8 chars to match source format
                         partner_desc = self.smdb_parser.get_node_description(event.link_partner_guid) if self.smdb_parser else "Unknown"
                         # Abbreviate description for display
                         if ";" in partner_desc:
-                            partner_desc_short = partner_desc.split(";")[-1][:20]  # Take last part, max 20 chars
+                            partner_desc_part = partner_desc.split(";")[-1]  # Take last part
+                            if ":" in partner_desc_part:
+                                partner_desc_short = partner_desc_part.split(":")[0]  # Remove :N5110_LD/U1 part
+                            else:
+                                partner_desc_short = partner_desc_part[:20]
                         else:
                             partner_desc_short = partner_desc[:20]  # Max 20 chars
-                        partner_info = f"{event.link_partner_guid}:{event.link_partner_port} ({partner_desc_short})"
+                        partner_info = f"{partner_guid_short}:{event.link_partner_port} ({partner_desc_short})"
                     
                     state_change = f"{event.state_from}→{event.state_to}"
                     switch_guid_short = event.switch_guid[-8:]  # Last 8 chars for clarity
                     switch_name_short = event.switch_name.split(';')[-1][:33]  # Abbreviated switch name
-                    sources = f"{event.fm_source[0:3]}" + (f"/{event.sm_source[0:3]}" if event.sm_source else "")  # Abbreviated sources
+                    # Safely format sources, handling None values
+                    fm_src = event.fm_source[0:3] if event.fm_source else "---"
+                    sm_src = event.sm_source[0:3] if event.sm_source else "---"
+                    sources = f"{fm_src}/{sm_src}"
                     
                     incident_id = f"{incident_num}" if i == 0 else ""
                     
                     # Determine port type display
-                    port_type_display = "Link"
+                    port_type_display = "Trunk"  # Default to trunk
                     if event.port_type == "access":
                         port_type_display = "Access"
                     elif event.port_type == "trunk":
@@ -721,24 +720,26 @@ class NMXTableAnalyzer:
                     line = (
                         f"{incident_id:<3} {event.timestamp.strftime('%Y-%m-%d %H:%M:%S'):<19} "
                         f"{switch_guid_short:<18} {event.port:<4} {port_type_display:<6} "
-                        f"{state_change:<12} {switch_name_short:<35} {partner_info:<20} {sources:<15}\n"
+                        f"{state_change:<12} {switch_name_short[:25]:<25} {partner_info:<50} {sources:<15}\n"
                     )
                     f.write(line)
                     
-                    # Write associated GPU errors as indented sub-entries
-                    for gpu_error in event.associated_gpu_errors:
-                        gpu_guid_short = gpu_error.gpu_guid[-8:] if gpu_error.gpu_guid else "Unknown"
-                        severity_short = gpu_error.severity.replace("Non ", "N-")
-                        error_details = f"{gpu_error.error_code}/{gpu_error.error_subcode} {severity_short}"
-                        xid_info = f"XID {gpu_error.equivalent_xid}"
-                        action = gpu_error.resolution
-                        
-                        gpu_line = (
-                            f"{'├─':<3} {gpu_error.timestamp.strftime('%Y-%m-%d %H:%M:%S'):<19} "
-                            f"{gpu_guid_short:<18} {gpu_error.port_num:<4} {'GPU':<6} "
-                            f"{error_details:<12} {gpu_error.comments[:33]:<35} {xid_info:<20} {action:<15}\n"
-                        )
-                        f.write(gpu_line)
+                    # Add associated GPU NVL errors as indented sub-entries
+                    if event.associated_gpu_errors:
+                        for gpu_error in event.associated_gpu_errors:
+                            error_time_str = gpu_error.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                            error_code_str = f"{gpu_error.error_code}/{gpu_error.error_subcode}" if gpu_error.error_code and gpu_error.error_subcode else "N/A"
+                            equivalent_xid_str = f"XID-{gpu_error.equivalent_xid}" if gpu_error.equivalent_xid else "N/A"
+                            gpu_guid_short = gpu_error.gpu_guid[-8:] if gpu_error.gpu_guid else "N/A"
+                            severity_short = gpu_error.severity.replace(" ", "")[:8]  # "NonFatal" or "Fatal"
+                            
+                            # Indented sub-line for GPU error
+                            gpu_line = (
+                                f"{'├─':<3} {error_time_str:<19} "
+                                f"GPU:{gpu_guid_short:<13} {gpu_error.port_num or 'N/A':<4} {'GPU':<4} "
+                                f"{severity_short:<12} {error_code_str:<15} {equivalent_xid_str:<20} {gpu_error.resolution or 'N/A':<15}\n"
+                            )
+                            f.write(gpu_line)
                 
                 # Add separator between incidents
                 if len(group) > 1 or incident_num < len(groups):
@@ -747,14 +748,8 @@ class NMXTableAnalyzer:
                 incident_num += 1
             
             # Summary
-            f.write("\n" + "=" * 152 + "\n")
-            access_count = sum(1 for e in self.trunk_events if e.port_type == "access")
-            trunk_count = sum(1 for e in self.trunk_events if e.port_type == "trunk")
-            gpu_error_count = sum(len(e.associated_gpu_errors) for e in self.trunk_events)
-            
+            f.write("\n" + "=" * 120 + "\n")
             f.write(f"SUMMARY: {len(self.trunk_events)} events in {len(groups)} incidents\n")
-            f.write(f"Port Types: {access_count} access, {trunk_count} trunk\n")
-            f.write(f"GPU Errors Correlated: {gpu_error_count}\n")
             if self.smdb_parser:
                 partnered_events = sum(1 for e in self.trunk_events if e.link_partner_guid)
                 f.write(f"Link partners identified: {partnered_events}/{len(self.trunk_events)} events\n")
@@ -772,8 +767,7 @@ class NMXTableAnalyzer:
             writer.writerow([
                 'Timestamp', 'Switch_GUID', 'Switch_Name', 'Port', 'Cage', 'Slot',
                 'State_From', 'State_To', 'Chassis_SN', 'Partition_ID', 'TID',
-                'Link_Partner_GUID', 'Link_Partner_Port', 'FM_Source', 'SM_Source',
-                'Port_Type', 'Event_Type', 'GPU_Errors_Count'
+                'Link_Partner_GUID', 'Link_Partner_Port', 'FM_Source', 'SM_Source'
             ])
             
             # Data rows
@@ -793,39 +787,60 @@ class NMXTableAnalyzer:
                     event.link_partner_guid or '',
                     event.link_partner_port or '',
                     event.fm_source,
-                    event.sm_source or '',
-                    event.port_type or '',
-                    event.event_type or '',
-                    len(event.associated_gpu_errors)
+                    event.sm_source
                 ])
         
         print(f"CSV report written to: {output_file}")
         
-        # Export GPU errors separately
-        self._export_gpu_errors_csv(output_file.replace('.csv', '_gpu_errors.csv'))
+        # Also export GPU errors as a separate CSV file
+        gpu_csv_file = output_file.replace('.csv', '_gpu_errors.csv')
+        self._export_gpu_errors_csv(gpu_csv_file)
 
     def _export_gpu_errors_csv(self, output_file: str):
-        """Export detailed GPU error data with trunk failure context"""
+        """Export GPU NVL errors to a separate CSV file"""
         all_gpu_errors = []
         for event in self.trunk_events:
-            for gpu_error in event.associated_gpu_errors:
-                error_data = asdict(gpu_error)
-                error_data['trunk_event_timestamp'] = event.timestamp.strftime('%Y-%m-%d %H:%M:%S')
-                error_data['trunk_switch_guid'] = event.switch_guid
-                error_data['trunk_port'] = event.port
-                error_data['trunk_port_type'] = event.port_type
-                all_gpu_errors.append(error_data)
+            if event.associated_gpu_errors:
+                for gpu_error in event.associated_gpu_errors:
+                    # Add trunk event context to GPU error for correlation
+                    gpu_error_data = {
+                        'trunk_event_timestamp': event.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                        'trunk_switch_guid': event.switch_guid,
+                        'trunk_port': event.port,
+                        'gpu_error_timestamp': gpu_error.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                        'gpu_severity': gpu_error.severity,
+                        'gpu_guid': gpu_error.gpu_guid,
+                        'module_id': gpu_error.module_id,
+                        'node_id': gpu_error.node_id,
+                        'partition_id': gpu_error.partition_id,
+                        'port_num': gpu_error.port_num,
+                        'port_status': gpu_error.port_status,
+                        'error_code': gpu_error.error_code,
+                        'error_subcode': gpu_error.error_subcode,
+                        'port_down_reason_code': gpu_error.port_down_reason_code,
+                        'is_error_first': gpu_error.is_error_first,
+                        'error_status': gpu_error.error_status,
+                        'error_debug_data': gpu_error.error_debug_data,
+                        'equivalent_xid': gpu_error.equivalent_xid,
+                        'resolution': gpu_error.resolution,
+                        'comments': gpu_error.comments,
+                        'source_file': gpu_error.source_file
+                    }
+                    all_gpu_errors.append(gpu_error_data)
         
         if all_gpu_errors:
             with open(output_file, 'w', newline='') as f:
-                writer = csv.DictWriter(f, fieldnames=all_gpu_errors[0].keys())
-                writer.writeheader()
-                writer.writerows(all_gpu_errors)
+                if all_gpu_errors:  # Check if we have data
+                    writer = csv.DictWriter(f, fieldnames=all_gpu_errors[0].keys())
+                    writer.writeheader()
+                    writer.writerows(all_gpu_errors)
             print(f"GPU errors CSV written to: {output_file}")
+        else:
+            print("No GPU errors found to export")
 
     def run_analysis(self):
         """Run the complete table analysis"""
-        print("Starting NMX-C Enhanced Analysis...")
+        print("Starting NMX-C Table Analysis...")
         self.collect_events()
         return len(self.trunk_events)
 
@@ -834,7 +849,21 @@ def main():
     """Main entry point"""
     import argparse
     
-    parser = argparse.ArgumentParser(description="NMX-C Enhanced Fabric Analysis Tool")
+    parser = argparse.ArgumentParser(
+        description="NMX-C Fabric Table Analysis Tool",
+        epilog="""
+DETECTED IN COLUMN GLOSSARY:
+  fab     = Found in Fabric Manager logs but no nvlSM correlation
+  nvl     = Found in nvlSM logs but no Fabric Manager correlation  
+  fab/nvl = Perfect correlation from both sources
+  GPU entries show resolution/action for correlated GPU errors
+
+PORT TYPES:
+  Access = GPU-to-switch connections
+  Trunk  = Switch-to-switch connections
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--nmx-dir", "-d", default=".",
                        help="Path to nmx-c directory (default: current directory)")
     parser.add_argument("--max-rotated", "-m", type=int, default=10,
@@ -858,7 +887,7 @@ def main():
     
     event_count = analyzer.run_analysis()
     if event_count == 0:
-        print("No failure events found to analyze")
+        print("No trunk failure events found to analyze")
         return 1
     
     # Generate reports
@@ -867,10 +896,12 @@ def main():
     if args.csv:
         analyzer.generate_csv_report(args.csv)
     
-    print("\n" + "=" * 50)
-    print("ENHANCED ANALYSIS COMPLETE")
-    print("=" * 50)
+    print("\n" + "=" * 40)
+    print("TABLE ANALYSIS COMPLETE")
+    print("=" * 40)
     print(f"Events analyzed: {event_count}")
+    
+    # Port breakdown (for batch script parsing)
     access_count = sum(1 for e in analyzer.trunk_events if e.port_type == "access")
     trunk_count = sum(1 for e in analyzer.trunk_events if e.port_type == "trunk")
     gpu_count = sum(len(e.associated_gpu_errors) for e in analyzer.trunk_events)
