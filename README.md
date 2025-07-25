@@ -41,12 +41,12 @@ python3 nmx_analyzer.py -o detailed_report.txt -j analysis.json
 
 ##  Key Features
 
-- **🔗 Link Partner Correlation**: Uses SMDB dumps to identify connected trunk links
-- ** Timestamp Correlation**: Matches fabric manager and nvlSM events precisely  
-- ** Auto-Discovery**: Works with standard nmx-c directory structure
-- ** Log Rotation Support**: Processes rotated logs automatically
-- ** Multiple Formats**: Table, detailed text, CSV, and JSON outputs
-- ** Zero Dependencies**: Pure Python 3.6+ with standard library only
+- Link Partner Correlation: Uses SMDB dumps to identify connected trunk links
+- Timestamp Correlation: Matches fabric manager and nvlSM events precisely  
+- Auto-Discovery: Works with standard nmx-c directory structure
+- Log Rotation Support: Processes rotated logs automatically
+- Multiple Formats: Table, detailed text, CSV, and JSON outputs
+- Zero Dependencies: Pure Python 3.6+ with standard library only
 
 ##  Sample Output
 
