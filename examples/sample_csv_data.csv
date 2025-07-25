@@ -1,0 +1,17 @@
+Timestamp,Switch_GUID,Switch_Name,Port,Cage,Slot,State_From,State_To,Chassis_SN,Partition_ID,TID,Link_Partner_GUID,Link_Partner_Port,FM_Source,SM_Source
+2025-07-19 18:34:57,0xb0cf0e0300e31440,MF0;gb-nvl-087-switch03:N5110_LD,61,7,7,ACTIVE,DOWN,1825124190178,,134,0xb0cf0e0300e42e00,61,fabricmanager.log.gz,nvlsm.log.gz
+2025-07-19 18:34:57,0xb0cf0e0300e31440,MF0;gb-nvl-087-switch03:N5110_LD,61,7,7,ACTIVE,DOWN,1825124190178,32766,134,0xb0cf0e0300e42e00,61,fabricmanager.log.gz,nvlsm.log.gz
+2025-07-22 11:22:25,0xb0cf0e0300e31520,MF0;gb-nvl-087-switch04:N5110_LD,54,5,8,INIT,DOWN,1825124190178,32766,134,0xb0cf0e0300df4460,54,fabricmanager.log.gz,nvlsm.log.gz
+2025-07-22 11:22:25,0xb0cf0e0300df4460,MF0;gb-nvl-085-switch04:N5110_LD,54,5,8,INIT,DOWN,1825124190179,32766,134,0xb0cf0e0300e31520,54,fabricmanager.log.gz,nvlsm.log.gz
+2025-07-22 11:22:25,0xb0cf0e0300e31520,MF0;gb-nvl-087-switch04:N5110_LD,54,5,8,INIT,DOWN,1825124190178,32766,134,0xb0cf0e0300df4460,54,fabricmanager.log.gz,nvlsm.log.gz
+2025-07-22 11:22:25,0xb0cf0e0300df4460,MF0;gb-nvl-085-switch04:N5110_LD,54,5,8,INIT,DOWN,1825124190179,32766,134,0xb0cf0e0300e31520,54,fabricmanager.log.gz,nvlsm.log.gz
+2025-07-24 14:54:53,0xb0cf0e0300e42e60,MF0;gb-nvl-085-switch02:N5110_LD,70,9,6,ACTIVE,DOWN,1825124190179,32766,134,0xb0cf0e0300e314a0,70,fabricmanager.log.gz,nvlsm.log.gz
+2025-07-24 14:54:53,0xb0cf0e0300e314a0,MF0;gb-nvl-087-switch02:N5110_LD,70,9,6,ACTIVE,DOWN,1825124190178,32766,134,0xb0cf0e0300e42e60,70,fabricmanager.log.gz,nvlsm.log.gz
+2025-07-24 14:54:53,0xb0cf0e0300e42e60,MF0;gb-nvl-085-switch02:N5110_LD,70,9,6,ACTIVE,DOWN,1825124190179,32766,134,0xb0cf0e0300e314a0,70,fabricmanager.log.gz,nvlsm.log.gz
+2025-07-24 14:54:53,0xb0cf0e0300e314a0,MF0;gb-nvl-087-switch02:N5110_LD,70,9,6,ACTIVE,DOWN,1825124190178,32766,134,0xb0cf0e0300e42e60,70,fabricmanager.log.gz,nvlsm.log.gz
+2025-07-24 14:54:54,0xb0cf0e0300e42e60,MF0;gb-nvl-085-switch02:N5110_LD,70,9,6,ACTIVE,DOWN,1825124190179,32766,134,0xb0cf0e0300e314a0,70,fabricmanager.log.gz,nvlsm.log.gz
+2025-07-24 14:54:54,0xb0cf0e0300e314a0,MF0;gb-nvl-087-switch02:N5110_LD,70,9,6,ACTIVE,DOWN,1825124190178,32766,134,0xb0cf0e0300e42e60,70,fabricmanager.log.gz,nvlsm.log.gz
+2025-07-24 14:54:55,0xb0cf0e0300e42e60,MF0;gb-nvl-085-switch02:N5110_LD,70,9,6,ACTIVE,DOWN,1825124190179,32766,134,0xb0cf0e0300e314a0,70,fabricmanager.log.gz,nvlsm.log.gz
+2025-07-24 14:54:55,0xb0cf0e0300e314a0,MF0;gb-nvl-087-switch02:N5110_LD,70,9,6,ACTIVE,DOWN,1825124190178,32766,134,0xb0cf0e0300e42e60,70,fabricmanager.log.gz,nvlsm.log.gz
+2025-07-24 14:54:59,0xb0cf0e0300e42e60,MF0;gb-nvl-085-switch02:N5110_LD,70,9,6,ACTIVE,DOWN,1825124190179,32766,134,0xb0cf0e0300e314a0,70,fabricmanager.log.gz,nvlsm.log.gz
+2025-07-24 14:54:59,0xb0cf0e0300e314a0,MF0;gb-nvl-087-switch02:N5110_LD,70,9,6,ACTIVE,DOWN,1825124190178,32766,134,0xb0cf0e0300e42e60,70,fabricmanager.log.gz,nvlsm.log.gz

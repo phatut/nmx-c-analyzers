@@ -1,0 +1,34 @@
+TRUNK LINK FAILURES REPORT
+========================================================================================================================
+
+#   Timestamp           Switch GUID        Port Cage State Change Switch Name                         Partner              Sources        
+------------------------------------------------------------------------------------------------------------------------
+1   2025-07-19 18:34:57 00e31440           61   7    ACTIVE→DOWN  gb-nvl-087-switch03:N5110_LD        00e42e00:61          fab/nvl        
+
+2   2025-07-19 18:34:57 00e31440           61   7    ACTIVE→DOWN  gb-nvl-087-switch03:N5110_LD        00e42e00:61          fab/nvl        
+
+3   2025-07-22 11:22:25 00e31520           54   5    INIT→DOWN    gb-nvl-087-switch04:N5110_LD        00df4460:54          fab/nvl        
+    2025-07-22 11:22:25 00df4460           54   5    INIT→DOWN    gb-nvl-085-switch04:N5110_LD        00e31520:54          fab/nvl        
+
+4   2025-07-22 11:22:25 00e31520           54   5    INIT→DOWN    gb-nvl-087-switch04:N5110_LD        00df4460:54          fab/nvl        
+    2025-07-22 11:22:25 00df4460           54   5    INIT→DOWN    gb-nvl-085-switch04:N5110_LD        00e31520:54          fab/nvl        
+
+5   2025-07-24 14:54:53 00e42e60           70   9    ACTIVE→DOWN  gb-nvl-085-switch02:N5110_LD        00e314a0:70          fab/nvl        
+    2025-07-24 14:54:53 00e314a0           70   9    ACTIVE→DOWN  gb-nvl-087-switch02:N5110_LD        00e42e60:70          fab/nvl        
+
+6   2025-07-24 14:54:53 00e42e60           70   9    ACTIVE→DOWN  gb-nvl-085-switch02:N5110_LD        00e314a0:70          fab/nvl        
+    2025-07-24 14:54:53 00e314a0           70   9    ACTIVE→DOWN  gb-nvl-087-switch02:N5110_LD        00e42e60:70          fab/nvl        
+
+7   2025-07-24 14:54:54 00e42e60           70   9    ACTIVE→DOWN  gb-nvl-085-switch02:N5110_LD        00e314a0:70          fab/nvl        
+    2025-07-24 14:54:54 00e314a0           70   9    ACTIVE→DOWN  gb-nvl-087-switch02:N5110_LD        00e42e60:70          fab/nvl        
+
+8   2025-07-24 14:54:55 00e42e60           70   9    ACTIVE→DOWN  gb-nvl-085-switch02:N5110_LD        00e314a0:70          fab/nvl        
+    2025-07-24 14:54:55 00e314a0           70   9    ACTIVE→DOWN  gb-nvl-087-switch02:N5110_LD        00e42e60:70          fab/nvl        
+
+9   2025-07-24 14:54:59 00e42e60           70   9    ACTIVE→DOWN  gb-nvl-085-switch02:N5110_LD        00e314a0:70          fab/nvl        
+    2025-07-24 14:54:59 00e314a0           70   9    ACTIVE→DOWN  gb-nvl-087-switch02:N5110_LD        00e42e60:70          fab/nvl        
+
+
+========================================================================================================================
+SUMMARY: 16 events in 9 incidents
+Link partners identified: 16/16 events

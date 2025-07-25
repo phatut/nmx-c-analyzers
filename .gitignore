@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Output files (examples are okay, but not actual analysis outputs)
+*_analysis_*.txt
+*_analysis_*.json
+*_analysis_*.csv
+trunk_failures_*.txt
+trunk_failures_*.csv
+nmx_analysis_*.txt
+nmx_analysis_*.json
+daily_*.txt
+incident_*.txt
+incident_*.json
+
+# Log files
+*.log
+*.log.*
+
+# Compressed files (except examples)
+*.gz
+!examples/*.gz
+
+# Temporary files
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp
+
+# Test files
+test_*.py
+*_test.py 
