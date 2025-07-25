@@ -1,0 +1,63 @@
+# Sample Input Data (what the analyzer processes)
+
+## Fabric Manager Log (fabricmanager.log.gz)
+```
+[Jul 19 2025 18:34:55] [ERROR] [tid 192] Fabric Manager detected GPU NVL Non Fatal error on :
+moduleId : 1
+nodeId : 6
+partitionId : 32766
+gpuGuid : 0xb0cf0e0300e42e00
+portNum : 61
+portStatus : 2
+errorCode : 0x02
+errorSubcode : 0x07
+portDownReasonCode : 0x00
+isErrorFirst : 1
+errorStatus : 0x00000008
+errorDebugData : 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+
+[Jul 19 2025 18:34:57] [WARNING] [tid 134] Trunk port failure detected for switch GUID 0xb0cf0e0300e42e00 and switch chassis sn 1825124190179, slot 7 port number 61 port GUID 0xb0cf0e0300e42e00 cage 7.
+
+[Jul 19 2025 18:34:56] [ERROR] [tid 193] Fabric Manager detected GPU NVL Fatal error on :
+moduleId : 2
+nodeId : 7
+partitionId : 32766
+gpuGuid : 0xb0cf0e0300e31440
+portNum : 61
+portStatus : 3
+errorCode : 0x03
+errorSubcode : 0x01
+portDownReasonCode : 0x01
+isErrorFirst : 1
+errorStatus : 0x00000010
+errorDebugData : 0x00001234 0x00005678 0x00000000 0x00000000 0x00000000 0x00000000
+
+[Jul 19 2025 18:34:57] [WARNING] [tid 134] Trunk port failure detected for switch GUID 0xb0cf0e0300e31440 and switch chassis sn 1825124190178, slot 7 port number 61 port GUID 0xb0cf0e0300e31440 cage 7.
+```
+
+## nvlSM Log (nvlsm.log.gz)
+```
+Jul 19 18:34:59 1234 [A1B2C3D4] 0x01 -> osm_spst_rcv_process: Switch 0xb0cf0e0300e42e00 Mellanox Technologies;MT53236;HCA-1:MXM674:/U1/P1/L1/C1/A1 port 61(1) changed state from ACTIVE to DOWN
+Jul 19 18:34:59 1234 [A1B2C3D4] 0x01 -> osm_spst_rcv_process: Switch 0xb0cf0e0300e31440 Mellanox Technologies;MT53236;HCA-2:MXM674:/U1/P1/L1/C1/A2 port 61(1) changed state from ACTIVE to DOWN
+Jul 22 11:22:27 5678 [B2C3D4E5] 0x02 -> osm_spst_rcv_process: Switch 0xb0cf0e0300e31520 MF0;gb-nvl-087-switch04:N5110_LD/U1 port 54(1) changed state from INIT to DOWN
+Jul 22 11:22:27 5678 [B2C3D4E5] 0x02 -> osm_spst_rcv_process: Switch 0xb0cf0e0300df4460 MF0;gb-nvl-085-switch04:N5110_LD/U1 port 54(1) changed state from INIT to DOWN
+```
+
+## SMDB Dump (dumps/nvlsm-smdb.dump.gz)
+```
+LINKS
+NodeGUID1, PortNum1, NodeGUID2, PortNum2
+0xb0cf0e0300e42e00, 61, 0xb0cf0e0300e31440, 61
+0xb0cf0e0300e31520, 54, 0xb0cf0e0300df4460, 54
+0xb0cf0e0300e42e60, 70, 0xb0cf0e0300e314a0, 70
+END_LINKS
+```
+
+# Analysis Process
+
+1. **GPU Error Detection**: Parser finds multi-line GPU NVL error entries
+2. **Trunk Failure Detection**: Parser finds trunk port failure warnings
+3. **Link State Detection**: Parser finds port state changes in nvlSM logs
+4. **Topology Discovery**: Parser extracts link partnerships from SMDB
+5. **Time Correlation**: Events within 5 seconds are correlated
+6. **Partner Grouping**: Link partners shown together in output

@@ -1,0 +1,26 @@
+TRUNK LINK FAILURES REPORT
+============================================================================
+#   Timestamp           Switch/GPU GUID    Port Type Event/Error   Details                             XID/Partner          Action         
+----------------------------------------------------------------------------
+1   2025-07-19 18:34:57  e42e00            61   Link ACTIVE→DOWN   Mellanox;MT53236;HCA-1             e31440:61           FM/nvl         
+├─  2025-07-19 18:34:55  GPU:e42e00        61   GPU  NonFatal      0x02/0x07                          XID-149             RESET_GPU      
+
+2   2025-07-19 18:34:57  e31440            61   Link ACTIVE→DOWN   Mellanox;MT53236;HCA-2             e42e00:61           FM/nvl         
+├─  2025-07-19 18:34:56  GPU:e31440        61   GPU  Fatal         0x03/0x01                          XID-150             RESET_GPU      
+
+3   2025-07-22 11:22:25  e31520            54   Link INIT→DOWN     gb-nvl-087-switch04:N5110_LD        df4460:54           FM/nvl         
+    2025-07-22 11:22:25  df4460            54   Link INIT→DOWN     gb-nvl-085-switch04:N5110_LD        e31520:54           FM/nvl         
+
+4   2025-07-24 14:54:53  e42e60            70   Link ACTIVE→DOWN   gb-nvl-085-switch02:N5110_LD        e314a0:70           FM/nvl         
+    2025-07-24 14:54:53  e314a0            70   Link ACTIVE→DOWN   gb-nvl-087-switch02:N5110_LD        e42e60:70           FM/nvl         
+├─  2025-07-24 14:54:51  GPU:e42e60        70   GPU  NonFatal      0x02/0x08                          XID-145             RESET_GPU      
+├─  2025-07-24 14:54:52  GPU:e314a0        70   GPU  NonFatal      0x02/0x08                          XID-145             RESET_GPU      
+
+5   2025-07-24 16:15:22  e31440            45   Link ACTIVE→DOWN   gb-nvl-087-switch03:N5110_LD        Single-ended        FM/nvl         
+├─  2025-07-24 16:15:20  GPU:e31440        45   GPU  Fatal         0x01/0x01                          XID-144             INVESTIGATE    
+
+============================================================================
+SUMMARY: 8 events in 5 incidents
+Link partners identified: 6/8 events
+GPU errors correlated: 5 events with 5 GPU errors
+Correlation accuracy: 100% within 5-second window

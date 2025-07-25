@@ -1,12 +1,12 @@
 # NMX-C Fabric Analyzers
 
-🔧 **Comprehensive analysis tools for NVIDIA NMX-C fabric systems** - detect trunk port failures, correlate events across logs, and identify link partner relationships.
+**Comprehensive analysis tools for NVIDIA NMX-C fabric systems** - detect trunk port failures, correlate events across logs, and identify link partner relationships.
 
 [![Python 3.6+](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![No Dependencies](https://img.shields.io/badge/dependencies-none-green.svg)]()
 
-## 🚀 Quick Start
+##  Quick Start
 
 ```bash
 # Clone repository
@@ -19,9 +19,9 @@ cd /path/to/nmx-c/
 python3 nmx_table_analyzer.py
 ```
 
-## 📊 Tools Included
+##  Tools Included
 
-### 1. **Table Analyzer** (⭐ **Recommended**)
+### 1. **Table Analyzer** (**Recommended**)
 Clean table format reports with intelligent link partner correlation.
 
 ```bash
@@ -39,16 +39,16 @@ python3 nmx_analyzer.py -o detailed_report.txt -j analysis.json
 
 **Perfect for**: In-depth analysis, historical trending, detailed investigations
 
-## 🎯 Key Features
+##  Key Features
 
 - **🔗 Link Partner Correlation**: Uses SMDB dumps to identify connected trunk links
-- **📅 Timestamp Correlation**: Matches fabric manager and nvlSM events precisely  
-- **📁 Auto-Discovery**: Works with standard nmx-c directory structure
-- **🔄 Log Rotation Support**: Processes rotated logs automatically
-- **📋 Multiple Formats**: Table, detailed text, CSV, and JSON outputs
-- **⚡ Zero Dependencies**: Pure Python 3.6+ with standard library only
+- **- Timestamp Correlation**: Matches fabric manager and nvlSM events precisely  
+- **- Auto-Discovery**: Works with standard nmx-c directory structure
+- **- Log Rotation Support**: Processes rotated logs automatically
+- **- Multiple Formats**: Table, detailed text, CSV, and JSON outputs
+- **- Zero Dependencies**: Pure Python 3.6+ with standard library only
 
-## 📈 Sample Output
+##  Sample Output
 
 ### Table Format (nmx_table_analyzer.py)
 ```
@@ -66,7 +66,7 @@ TRUNK LINK FAILURES REPORT
 SUMMARY: 16 events in 2 incidents | Link partners identified: 16/16 events
 ```
 
-## 🏗️ Repository Structure
+##  Repository Structure
 
 ```
 nmx-c-analyzers/
@@ -85,7 +85,7 @@ nmx-c-analyzers/
     └── troubleshooting.md
 ```
 
-## 🔧 Requirements
+##  Requirements
 
 - **Python 3.6+** (no external dependencies)
 - **NMX-C directory structure** with:
@@ -93,7 +93,7 @@ nmx-c-analyzers/
   - `nvlsm.log.gz` (and rotated versions)  
   - `dumps/nvlsm-smdb.dump.gz` (for link partner correlation)
 
-## 📋 Usage Examples
+## - Usage Examples
 
 ### Daily Monitoring
 ```bash
@@ -122,7 +122,7 @@ python3 nmx_analyzer.py \
   --time-window 15
 ```
 
-## 🔍 What It Detects
+##  What It Detects
 
 ### Trunk Port Failures (Fabric Manager)
 ```
@@ -148,19 +148,19 @@ NodeGUID1, PortNum1, NodeGUID2, PortNum2
 - **🔗 Link Partner Discovery**: Identifies which switches/ports are connected
 - **⏱️ Timestamp Synchronization**: Finds simultaneous failures on link pairs
 - **📈 Confidence Scoring**: Rates correlation quality (HIGH/MEDIUM/LOW)
-- **📋 Incident Grouping**: Groups related failures for easier analysis
+- **- Incident Grouping**: Groups related failures for easier analysis
 
-## 🚀 Quick Tool Comparison
+##  Quick Tool Comparison
 
 | Feature | Table Analyzer | Comprehensive Analyzer |
 |---------|----------------|------------------------|
 | **Best for** | Daily monitoring, quick analysis | Deep investigation, trending |
 | **Output format** | Clean table + CSV | Detailed text + JSON |
-| **Link correlation** | ✅ Visual grouping | ✅ Detailed analysis |
-| **Performance** | ⚡ Fast | 🔍 Thorough |
+| **Link correlation** | - Visual grouping | - Detailed analysis |
+| **Performance** | - Fast | 🔍 Thorough |
 | **Use case** | Operations, incidents | Analysis, reporting |
 
-## 🛠️ Installation & Deployment
+##  Installation & Deployment
 
 ### Single Directory
 ```bash
@@ -181,13 +181,13 @@ cd /path/to/nmx-c/
 nmx_table_analyzer.py
 ```
 
-## 📖 Documentation
+##  Documentation
 
 - **[Table Analyzer Guide](TABLE_ANALYZER_README.md)**: Detailed usage for table analyzer
 - **[Examples](examples/)**: Sample outputs and usage patterns
 - **[Documentation](docs/)**: Technical details and troubleshooting
 
-## 🤝 Contributing
+##  Contributing
 
 Contributions welcome! Please feel free to submit issues, feature requests, or pull requests.
 
@@ -197,15 +197,15 @@ Contributions welcome! Please feel free to submit issues, feature requests, or p
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📝 License
+##  License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🏷️ Tags
+##  Tags
 
 `nvidia` `nvlink` `fabric-analysis` `network-monitoring` `trunk-ports` `fabric-manager` `nvlsm` `smdb` `correlation-analysis` `network-troubleshooting`
 
-## 📊 Stats
+##  Stats
 
 - **Zero Dependencies**: Uses only Python standard library
 - **Multi-Log Correlation**: Processes 2-3 different log sources simultaneously  
@@ -215,4 +215,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-⭐ **Star this repository if it helps with your NMX-C fabric monitoring!** 
+**Star this repository if it helps with your NMX-C fabric monitoring!** 
