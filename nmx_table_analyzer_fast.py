@@ -225,7 +225,9 @@ class FastLogProcessor:
                 r'\[([^]]+)\].*Fabric Manager detected GPU NVL Non Fatal error on'
             ),
             'nvlsm_state': re.compile(
-                r'([A-Za-z]{3} \d{1,2} \d{2}:\d{2}:\d{2}).*Switch (0x[a-fA-F0-9]+).*port (\d+)\(\d+\) changed state from (\w+) to (\w+)'
+                r'([A-Za-z]{3} \d{1,2} \d{2}:\d{2}:\d{2}) \d+ \[([A-Z0-9]+)\] 0x\d{2} -> '
+                r'osm_(?:spst|pi)_rcv_process: Switch (0x[a-fA-F0-9]+) ([^;]+);([^:]+):([^/]+)/[^ ]+ '
+                r'port (\d+)(?:\([^)]+\))? changed state from (\w+) to (\w+)'
             )
         }
     
@@ -382,16 +384,16 @@ class FastLogProcessor:
         
         for line in lines:
             match = self.patterns['nvlsm_state'].search(line)
-            if match and match.group(5) == 'DOWN':
+            if match and match.group(9) == 'DOWN':  # state_to is now group 9
                 try:
                     timestamp = self._parse_nvlsm_timestamp(match.group(1))
                     events.append({
                         'type': 'nvlsm_state',
                         'timestamp': timestamp,
-                        'switch_guid': match.group(2),
-                        'port': int(match.group(3)),
-                        'state_from': match.group(4),
-                        'state_to': match.group(5),
+                        'switch_guid': match.group(3),  # switch GUID is now group 3
+                        'port': int(match.group(7)),    # port is now group 7
+                        'state_from': match.group(8),   # state_from is now group 8
+                        'state_to': match.group(9),     # state_to is now group 9
                         'source': source_file
                     })
                 except (ValueError, IndexError):
